@@ -1,0 +1,109 @@
+Recipe for deploying the Intel optimizered TensorFlow Ubuntu Docker image on a CPU based HPC system with MPICH version of MPI.
+This Recipe is for Unix/Linux based systems.
+
+First ensure that your local has Docker and C/C++ compilers installed.
+
+Download the latest release version of Charliecloud from the GitHub site https://github.com/hpc/charliecloud
+
+Follow the instruction on how to build and install Charliecloud from the official website https://hpc.github.io/charliecloud/index.html
+
+Once you have Successfully installed Charliecloud on your local Linux system. Download the version of the Intel optimized TensorFlow Docker image you require from https://hub.docker.com/u/intelaipg
+If you are not familiar with using Docker please refer to the official Docker documentation https://docs.docker.com/ or other sources.
+
+The next step is to modify the TensorFlow Docker image to support distributed execution of the TensorFlow framework.
+
+Verify that you have successfully downloaded the Intel optimized TensorFlow Docker image by executing the command:
+sudo docker images
+
+next verify that you can execute the image using the command:
+sudo docker run -it <image name> /bin/bash
+
+Once you have verified that you can execute the Docker image exit the containerized image.
+
+Now list the available containers using the command:
+sudo docker ps -a
+
+Now execute the container using the command:
+sudo docker exec -it <container_ID> /bin/bash
+
+In the terminal of the containerized image install the following software packages into the Ubuntu image with the command:
+apt-get install python-numpy
+apt-get install libmpich-dev
+apt-get install libmpich12
+apt-get install scalapack-mpi-test
+apt-get install libblacs-openmpi1
+apt-get install gcc-8
+apt-get install g++-8
+apt-get install python3-numpy
+apt-get install python-numpy
+apt-get install vim
+
+If you experience any issues install due to not being able to write to a file or directory you will need to change the onwnership of the file or directory. For example, running the command:
+chown -R _apt:root /var/cache/apt/archives/partial/
+You will then have to run the apt-get install command you previously ran and the package will be successfully install. For example, execute the folloeing commands:
+apt-get install libmpich-dev
+chown -R _apt:root /var/cache/apt/archives/partial/
+apt-get install libmpich-dev
+
+If you require any additional packages, install them using the same procedure.
+
+Once you have successfully installed the MPICH libraries you need to install horovod via the pip command:
+
+Python3:
+pip3 install horovod
+
+Python2:
+pip install horovod
+
+Once you have successfully installed horovod, you can verify the installation by executing a simple TensorFlow script containing horovod.
+Below is a simple script you might want to use to verify the installation of horovod:
+<
+import tensorflow as tf
+import horovod.tensorflow as hvd
+
+hello = tf.constant('Hello, TensorFlow!')
+
+# Start tf session
+sess = tf.Session()
+
+# Run the op
+print(sess.run(hello))
+
+hvd.init()
+
+print("horovod rank", hvd.rank())
+>
+
+Now exit the container.
+
+List the containers with the command:
+sudo docker ps -a
+
+Save the modified container using the command:
+sudo docker commit CONTAINER_ID new_container_name
+
+Now that you have created a modified Docker image that supports distributed TensorFlow execution. The next step is to create a Charliecloud container from the new Docker image.
+
+To build a flat tar.gz archive Charliecloud image use the command:
+ch-builder2tar <Docker_file_name> /dir/to/store/
+
+This will create a file /dir/to/store/Docker_file_name.tar.gz
+
+Now you can copy the Docker_file_name.tar.gz to the HPC system using scp.
+
+Once the file has been copied to the HPC ensure that Charliecloud is available on the system and if not build it in your local directory and add the bin directory to your PATH.
+
+To unpack the Docker_file_name.tar.gz file use the Charliecloud command:
+ch-tar2dir Docker_file_name.tar.gz /foo/bar/
+
+This will create a directory /foo/bar/Docker_file_name
+
+To execute the an application inside the container use the command ch-run. For example,
+ch-run -w /HOME/Docker/TensorFlow -- python /model/train.py
+
+The image directory is mounted read-only by default so it can be shared by multiple Charliecloud containers in the same or different jobs. It can be mounted read-write with the command:
+ch-run -w
+
+Distibuted execution line example using mpiexec from a Slurm script.
+mpiexec -n $SLURM_NTASKS -ppn $SLURM_NTASKS_PER_NODE ch-run -w /HOME/Docker/TensorFlow -- python /model/train.py
+
