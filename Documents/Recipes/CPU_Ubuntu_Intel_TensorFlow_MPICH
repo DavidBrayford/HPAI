@@ -27,11 +27,9 @@ Now execute the container using the command:
 sudo docker exec -it <container_ID> /bin/bash
 
 In the terminal of the containerized image install the following software packages into the Ubuntu image with the command:
-apt-get install python-numpy
 apt-get install libmpich-dev
 apt-get install libmpich12
 apt-get install scalapack-mpi-test
-apt-get install libblacs-openmpi1
 apt-get install gcc-8
 apt-get install g++-8
 apt-get install python3-numpy
