@@ -82,7 +82,7 @@ sudo docker commit CONTAINER_ID new_container_name
 Now that you have created a modified Docker image that supports distributed TensorFlow execution. The next step is to create a Charliecloud container from the new Docker image.
 
 To build a flat tar.gz archive Charliecloud image use the command:
-ch-builder2tar <Docker_file_name> /dir/to/store/
+sudo ch-builder2tar <Docker_file_name> /dir/to/store/
 
 This will create a file /dir/to/store/Docker_file_name.tar.gz
 
