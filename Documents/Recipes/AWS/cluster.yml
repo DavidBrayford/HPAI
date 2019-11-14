@@ -1,0 +1,173 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: Deploy an isolated VPC for use in workshops
+
+Parameters:
+
+  ClusterCIDR:
+    Description: CIDR range to use for the cluster subnet
+    Type: String
+    Default: 10.0.0.32/28
+
+  KeyName:
+    Description: The EC2 Key Pair to allow SSH access to the instances
+    Type: 'AWS::EC2::KeyPair::KeyName'
+    ConstraintDescription: Must be the name of an existing EC2 KeyPair
+    Default: ngraph_workshop
+  
+  BaseAMI:
+    Description: CentOS AMI to use for all nodes.
+    Type: String
+    Default: ami-0d57c11d9b1da58a7
+
+  InstanceType:
+    Description: Instance type to be used for all nodes.
+    Type: String
+    Default: t3.2xlarge
+    AllowedValues:
+      - t2.2xlarge
+      - t3.2xlarge
+      - t3a.2xlarge
+      - c5.2xlarge
+
+  VPC:
+    Description: Workshop VPC
+    Type: String
+    Default: vpc-09602195e438f033c
+
+  RouteTable:
+    Description: Base route table (allowing internet access)
+    Type: String
+    Default: rtb-0377dc1b2a6aeb820
+
+  SecurityGroup:
+    Description: Security group for SSH access
+    Type: String
+    Default: sg-007b240d8b345b3c1
+
+Resources:
+
+  ClusterSubnet:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      MapPublicIpOnLaunch: true
+      CidrBlock: !Ref ClusterCIDR
+      AvailabilityZone: !Select
+        - '0'
+        - !GetAZs ''
+      Tags:
+        - Key: Name
+          Value: OpenHPC Subnet
+
+  ClusterSubnetRouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref ClusterSubnet
+      RouteTableId: !Ref RouteTable
+
+  ClusterSubnetSG:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Allow SSH Access to Instance
+      VpcId: !Ref VPC
+
+  ClusterSubnetSGIngressRule:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+        GroupId: !Ref ClusterSubnetSG
+        IpProtocol: -1
+        FromPort: 1
+        ToPort: 65535
+        SourceSecurityGroupId: !GetAtt ClusterSubnetSG.GroupId
+  
+  ManagementEC2:
+    DependsOn: ClusterSubnet
+    Type: AWS::EC2::Instance
+    Properties:
+      AvailabilityZone: !GetAtt ClusterSubnet.AvailabilityZone
+      ImageId: !Ref BaseAMI
+      InstanceType: !Ref InstanceType
+      KeyName: !Ref KeyName
+      SubnetId: !Ref ClusterSubnet
+      SecurityGroupIds: [ !Ref SecurityGroup , !Ref ClusterSubnetSG ]
+      BlockDeviceMappings:
+        - DeviceName: /dev/sda1
+          Ebs:
+            VolumeSize: 340
+            DeleteOnTermination: true
+            VolumeType: gp2
+      Tags:
+        - Key: Name
+          Value: SMS
+      UserData:
+        Fn::Base64: !Sub |
+          #!/bin/bash -xe
+          sudo sed -i "s|enforcing|disabled|g" /etc/selinux/config
+          sudo setenforce 0
+          sudo yum install -y epel-release
+          sudo yum update -y
+          sudo yum install -y wget curl nfs-utils
+
+  Compute01:
+    DependsOn: ClusterSubnet
+    Type: AWS::EC2::Instance
+    Properties:
+      AvailabilityZone: !GetAtt ClusterSubnet.AvailabilityZone
+      ImageId: !Ref BaseAMI
+      InstanceType: !Ref InstanceType
+      KeyName: !Ref KeyName
+      SubnetId: !Ref ClusterSubnet
+      SecurityGroupIds: [ !Ref SecurityGroup , !Ref ClusterSubnetSG ]
+      BlockDeviceMappings:
+        - DeviceName: /dev/sda1
+          Ebs:
+            VolumeSize: 340
+            DeleteOnTermination: true
+            VolumeType: gp2
+      Tags:
+        - Key: Name
+          Value: C01
+      UserData:
+        Fn::Base64: !Sub |
+          #!/bin/bash -xe
+          sudo sed -i "s|enforcing|disabled|g" /etc/selinux/config
+          sudo setenforce 0
+          sudo yum install -y epel-release
+          sudo yum update -y
+          sudo yum install -y wget curl nfs-utils
+
+  Compute02:
+    DependsOn: ClusterSubnet
+    Type: AWS::EC2::Instance
+    Properties:
+      AvailabilityZone: !GetAtt ClusterSubnet.AvailabilityZone
+      ImageId: !Ref BaseAMI
+      InstanceType: !Ref InstanceType
+      KeyName: !Ref KeyName
+      SubnetId: !Ref ClusterSubnet
+      SecurityGroupIds: [ !Ref SecurityGroup , !Ref ClusterSubnetSG ]
+      BlockDeviceMappings:
+        - DeviceName: /dev/sda1
+          Ebs:
+            VolumeSize: 340
+            DeleteOnTermination: true
+            VolumeType: gp2
+      Tags:
+        - Key: Name
+          Value: C02
+      UserData:
+        Fn::Base64: !Sub |
+          #!/bin/bash -xe
+          sudo sed -i "s|enforcing|disabled|g" /etc/selinux/config
+          sudo setenforce 0
+          sudo yum install -y epel-release
+          sudo yum update -y
+          sudo yum install -y wget curl nfs-utils
+
+Outputs:
+  ClusterSubnet:
+    Description: Cluster Subnet
+    Value: !Ref ClusterSubnet
+  ManagementEC2:
+    Description: SMS instance
+    Value: !GetAtt ManagementEC2.PublicIp
