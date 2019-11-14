@@ -1,1 +1,1 @@
-
+Script required to build an OpenHPC cluster on Amazon AWS, which were used in the guided tutorial "Using Charliecloud to Deploy a Containerized TensorFlow Workflow on a Secure HPC System with an OpenHPC Software Stack." at the Intel HPC DevCon on November 17th 2019, Denver, CO.
